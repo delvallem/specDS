@@ -88,6 +88,8 @@ def openFPA(path, mode):
                   'tiles_x': tiles_x,
                   'tiles_y': tiles_y,
                   'filename': filename}
+        
+        print(f'- Loaded file {filename}')
 
         return single
     
@@ -142,6 +144,8 @@ def openFPA(path, mode):
                   'tiles_x': tiles_x,
                   'tiles_y': tiles_y,
                   'filename': filename}
+        
+        print(f'- Loaded file {filename}')
         
         return mosaic
     
