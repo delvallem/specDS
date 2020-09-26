@@ -7,8 +7,7 @@ import glob
 import os
     
 def openFPA(path, mode):
-    '''
-    
+    ''' 
     Open one single or mosaic FPA acquistion.
     Agilent usually saves each mosaic in an individual folder.
     
@@ -33,14 +32,16 @@ def openFPA(path, mode):
     
     Returns
     -------
-    dict
-        - data (ndarray): spectra data; shape [n_spectra, n_points]
-        - wn (ndarray): wavenumber; shape [n_points]
+    data : dict
+        - filename (str): name of the opened file
         - fpa_size (int): size of the equipment detector 
+        - spec (ndarray): spectra
+            - if single: shape [n_spectra, n_points]
+            - if mosaic: shape [n_tiles, n_spectra, n_points]
         - tiles_x (int): number of tiles in x direction (if 'single', tiles_x=1)
         - tiles_y (int): number of tiles in y direction (if 'single', tiles_y=1)
-        - filename (str): name of the opened file
-      
+        - wn (ndarray): wavenumber; shape [n_points]
+        
     '''
         
     if mode == 'single':
@@ -71,27 +72,29 @@ def openFPA(path, mode):
         tiles_x = int(1)
         tiles_y = int(1)
         
-        # Spectra (Intensities) data
-        data = np.fromfile(dat_path, dtype='float32')
-        data = data[255:]
-        data = np.reshape(data, (len(wn),fpa_size,fpa_size))
-        data = np.flip(data, axis=1)
-        data = np.reshape(data, (len(wn),fpa_size*fpa_size)).T
+        # Spectra (Intensities)
+        spec = np.fromfile(dat_path, dtype='float32')
+        spec = spec[255:]
+        spec = np.reshape(spec, (len(wn),fpa_size,fpa_size))
+        spec = np.flip(spec, axis=1)
+        spec = np.reshape(spec, (len(wn),fpa_size*fpa_size)).T
         
         # Filename
         filename = os.path.basename(path[0])
          
-        # Infos Dict
-        single = {'data': data,
-                  'wn': wn,
-                  'fpa_size': fpa_size,
-                  'tiles_x': tiles_x,
-                  'tiles_y': tiles_y,
-                  'filename': filename}
+        # Data dict
+        data = {
+            'filename': filename,
+            'fpa_size': fpa_size,
+            'spec': spec,
+            'tiles_x': tiles_x,
+            'tiles_y': tiles_y,
+            'wn': wn
+            }
         
         print(f'- Loaded file {filename}')
 
-        return single
+        return data
     
     elif mode == 'mosaic':
         
@@ -99,7 +102,6 @@ def openFPA(path, mode):
         dmt_path = glob.glob(path + "/*.dmt")
         dmd_path = glob.glob(path + "/*.dmd")
         dat_path = glob.glob(path + "/*.dat")
-        filename = os.path.basename(path)
         
         # Wavenumber array
         dmt_float = np.fromfile(dmt_path[0], dtype='float64')
@@ -122,8 +124,8 @@ def openFPA(path, mode):
         tiles_x = int(np.asarray(dmd_path[-1][-13:-9]))+1
         tiles_y = int(np.asarray(dmd_path[-1][-8:-4]))+1
         
-        # Spectra (intensities) data
-        data = np.empty([tiles_x*tiles_y, fpa_size*fpa_size, len(wn)])
+        # Spectra (intensities)
+        spec = np.empty([tiles_x*tiles_y, fpa_size*fpa_size, len(wn)])
         i=0
         for dmd_file in dmd_path:
             dmd_file = np.fromfile(dmd_file, dtype='float32')
@@ -131,30 +133,32 @@ def openFPA(path, mode):
             dmd_file = np.reshape(dmd_file, (len(wn),fpa_size,fpa_size))
             dmd_file = np.flip(dmd_file, axis=1)
             dmd_file = np.reshape(dmd_file, (len(wn),fpa_size*fpa_size)).T
-            data[i,:,:] = dmd_file
+            spec[i,:,:] = dmd_file
             i+=1
         
         # Filename
         filename = os.path.basename(dmt_path[0]).replace('.dmt', '')
-        
-        # Infos Dict
-        mosaic = {'data': data,
-                  'wn': wn,
-                  'fpa_size': fpa_size,
-                  'tiles_x': tiles_x,
-                  'tiles_y': tiles_y,
-                  'filename': filename}
+
+        # Data dict
+        data = {
+            'filename': filename,
+            'fpa_size': fpa_size,
+            'spec': spec,
+            'tiles_x': tiles_x,
+            'tiles_y': tiles_y,
+            'wn': wn            
+            }
         
         print(f'- Loaded file {filename}')
         
-        return mosaic
+        return data
     
     else:
         print('Invalid Mode! \nSelect "single" or "mosaic" acquisition.')
 
+
 def openFPA_multiple(folder, mode):
     '''
-    
     Open multiple single or mosaic FPA acquistions.
     
     Parameters
@@ -191,7 +195,7 @@ def openFPA_multiple(folder, mode):
 
     Returns
     -------
-    list of dict
+    data : list of dict
         One dictionary for each single or mosaic image.
 
     '''
@@ -202,11 +206,11 @@ def openFPA_multiple(folder, mode):
         files = glob.glob(folder + "/*.bsp")
         
         # Open all single files
-        singles = []
+        data = []
         for file in files:
-            singles += [openFPA(file, mode)]
+            data += [openFPA(file, mode)]
             
-        return singles
+        return data
     
     elif mode == 'mosaic':
     
@@ -227,11 +231,13 @@ def openFPA_multiple(folder, mode):
                     files.remove(file)
         
         # Open all mosaic files
-        mosaics = []
+        data = []
         for file in files:
-            mosaics += [openFPA(file, mode)]
+            data += [openFPA(file, mode)]
         
-        return mosaics
+        return data
 
     else:
         print('Invalid Mode! \nSelect "single" or "mosaic" acquisition.')
+
+
