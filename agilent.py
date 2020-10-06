@@ -220,14 +220,14 @@ def openFPA_multiple(folder, mode):
         # Remove non subfolders files; remove subfolders without .dmt
         for file in files:
             isdmt = False
-            if os.path.isdir(file) == False:
+            if not os.path.isdir(file):
                 files.remove(file)
             else:
                 for subfiles in glob.glob(file+"/*"):
                     if os.path.splitext(subfiles)[1] == '.dmt':
                         isdmt = True
                         break
-                if isdmt == False:
+                if not isdmt:
                     files.remove(file)
         
         # Open all mosaic files
