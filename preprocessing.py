@@ -31,7 +31,7 @@ def concat2D(data):
     label_concat = []
     
     # If only one mosaic, create a list with only it
-    if isinstance(data, dict) == True:
+    if isinstance(data, dict):
         data = [data]   
     
     # Get spectra
@@ -95,7 +95,7 @@ def wnnear(wn, value):
     return idx
 
 
-def cut_inner(wn, spec, init, final):
+def cut_outer(wn, spec, init, final):
     '''
     Cut the spectra and the wavenumber in the style:    
     
@@ -135,7 +135,7 @@ def cut_inner(wn, spec, init, final):
     return wn, spec
 
 
-def cut_outer(wn, spec, init, final):    
+def cut_inner(wn, spec, init, final):    
     '''
     Cut the spectra and the wavenumber in the style: 
     
@@ -247,13 +247,16 @@ def minmax(spec):
     return spec    
  
     
-def meancenter(spec):
+def meancenter(spec, orientation):
     '''
-    Mean center the spectrum
+    Mean center rows or columns
 
     Parameters
     ----------
     spec : ndarray
+        Spectra of shape [n_spectra, n_points].
+        
+    orientation : str
         Spectra of shape [n_spectra, n_points].
 
     Returns
@@ -262,8 +265,14 @@ def meancenter(spec):
         Mean centered spectra of same shape.
 
     '''
-    
-    spec = spec - np.mean(spec, axis=1)[:,None]
+    if orientation == 'row':
+        spec = spec - np.mean(spec, axis=1)[:,None]
+        
+    elif orientation == 'column':
+        spec = spec - np.mean(spec, axis=0)[None,:]
+        
+    else:
+        print('Invalid orientation! \nSelect "row" or "column" orientation.')
 
     return spec
 
