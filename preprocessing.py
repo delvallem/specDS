@@ -267,4 +267,46 @@ def meancenter(spec):
 
     return spec
 
+def emsc(spec, degree = 2, norm = True):
+    '''
+    Extended multiplicative signal correction (EMSC). 
+    As described in Afseth and Kohler, 2012 (10.1016/j.chemolab.2012.03.004).
+    
+    - spec = a + spec_mean*b + e
+    
+    - spec_corr = (spec - a)/b
+    
+    - spec_corr = (spec - a - d1*(spec) - d2*(spec**2) - ... - dn*(spec**n))/b
+    
+    Parameters
+    ----------
+    spec : ndarray
+        Spectra of shape [n_spectra, n_points].
+    degree : int, optional
+        Degree of the polynomial model. The default is 2.
+    norm : bool, optional
+        Normalize the data. The default is True.
 
+    Returns
+    -------
+    spec_corr : ndarray
+        Corrected spectra.
+
+    '''
+
+    # Polynomial model
+    d = np.linspace(-1, 1, np.shape(spec)[1]).reshape(-1,1)
+    d = np.repeat(d,degree+1,axis=1)**np.arange(0,degree+1)
+    
+    # Least Squares estimation
+    model = np.hstack((np.mean(spec, axis=0).reshape(-1,1), d))
+    params = np.linalg.lstsq(model,spec.T,rcond=None)[0]
+    
+    # Baseline correction (a, d1, d2, ..., dn)
+    spec_corr = spec - model[:,1:].dot(params[1:,:]).T
+    
+    # Normalization (b)
+    if norm:
+        spec_corr = spec_corr/(params[0,:].T[:,None])
+
+    return spec_corr
