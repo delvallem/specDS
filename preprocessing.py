@@ -4,6 +4,7 @@ Data pre-processing
 
 import numpy as np
 
+
 def concat2D(data):
     '''
     Concatenate all spectra opened with agilentFPA_multiple or agilentFPA where
@@ -69,6 +70,8 @@ def concat2D(data):
     # All spectra to one 2D array
     spec_concat = np.concatenate(spec_all, axis=0)
     
+    print('Spectra concatenated. Labels created.')
+    
     return spec_concat, label_concat
 
 
@@ -126,11 +129,12 @@ def cut_outer(wn, spec, init, final):
 
     '''
     
-    wn_i = wnnear(wn, init)
-    wn_f = wnnear(wn, final)
+    mask = ((wn >= init) & (wn <= final))
     
-    wn = wn[wn_i:wn_f+1]
-    spec = spec[:,wn_i:wn_f+1]
+    wn = wn[mask]
+    spec = spec[:,mask]
+    
+    print(f'Selected from {init} cm-1 to {final} cm-1.')
     
     return wn, spec
 
@@ -166,11 +170,12 @@ def cut_inner(wn, spec, init, final):
 
     '''
     
-    wn_i = wnnear(wn, init)
-    wn_f = wnnear(wn, final)
+    mask = ((wn < init) | (wn > final))
     
-    wn = np.delete(wn, np.s_[wn_i:wn_f+1])
-    spec = np.delete(spec, np.s_[wn_i:wn_f+1], axis=1)
+    wn = wn[mask]
+    spec = spec[:,mask]
+    
+    print(f'Removed from {init} cm-1 to {final} cm-1.')
     
     return wn, spec
 
@@ -196,7 +201,35 @@ def vector(spec):
         np.sqrt(np.sum(np.square(spec),axis=1))[:,None]
         )
     
+    print('Vector normalization applied.')
+        
     return spec
+
+
+def minmax(spec):
+    '''
+    Min-max normalization
+
+    Parameters
+    ----------
+    spec : ndarray
+        Spectra of shape [n_spectra, n_points].
+
+    Returns
+    -------
+    spec : ndarray
+        Normalized spectra of same shape.
+
+    '''
+    
+    spec = np.divide(
+        spec - np.min(spec, axis=1)[:,None],
+        (np.max(spec, axis=1) - np.min(spec, axis=1))[:,None]
+        )
+    
+    print('Min-max normalization applied.')
+    
+    return spec 
 
 
 def snv(spec):
@@ -220,61 +253,10 @@ def snv(spec):
         np.std(spec,axis=1)[:,None]
         )
     
-    return spec
-
+    print('Standard Normal Variate applied.')
     
-def minmax(spec):
-    '''
-    Min-max normalization
-
-    Parameters
-    ----------
-    spec : ndarray
-        Spectra of shape [n_spectra, n_points].
-
-    Returns
-    -------
-    spec : ndarray
-        Normalized spectra of same shape.
-
-    '''
-    
-    spec = np.divide(
-        spec - np.min(spec, axis=1)[:,None],
-        (np.max(spec, axis=1) - np.min(spec, axis=1))[:,None]
-        )
-    
-    return spec    
+    return spec   
  
-    
-def meancenter(spec, orientation):
-    '''
-    Mean center rows or columns
-
-    Parameters
-    ----------
-    spec : ndarray
-        Spectra of shape [n_spectra, n_points].
-        
-    orientation : str
-        Spectra of shape [n_spectra, n_points].
-
-    Returns
-    -------
-    spec : ndarray
-        Mean centered spectra of same shape.
-
-    '''
-    if orientation == 'row':
-        spec = spec - np.mean(spec, axis=1)[:,None]
-        
-    elif orientation == 'column':
-        spec = spec - np.mean(spec, axis=0)[None,:]
-        
-    else:
-        print('Invalid orientation! \nSelect "row" or "column" orientation.')
-
-    return spec
 
 def emsc(spec, degree = 2, norm = True):
     '''
@@ -317,5 +299,39 @@ def emsc(spec, degree = 2, norm = True):
     # Normalization (b)
     if norm:
         spec_corr = spec_corr/(params[0,:].T[:,None])
+        
+    print('EMSC applied.')
 
     return spec_corr
+
+
+def meancenter(spec, orientation):
+    '''
+    Mean center rows or columns
+
+    Parameters
+    ----------
+    spec : ndarray
+        Spectra of shape [n_spectra, n_points].
+        
+    orientation : str
+        Spectra of shape [n_spectra, n_points].
+
+    Returns
+    -------
+    spec : ndarray
+        Mean centered spectra of same shape.
+
+    '''
+    if orientation == 'row':
+        spec = spec - np.mean(spec, axis=1)[:,None]
+        print('Mean centered (rows).')
+        
+    elif orientation == 'column':
+        spec = spec - np.mean(spec, axis=0)[None,:]
+        print('Mean centered (columns).')
+        
+    else:
+        print('Invalid orientation! \nSelect "row" or "column" orientation.')
+
+    return spec
