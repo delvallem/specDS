@@ -11,7 +11,7 @@ from scipy import stats
 
 class PCPlot:
 
-    def __init__(self, spec, label, wn, ncomp):
+    def __init__(self, spec, label, ncomp):
         '''
         Calculate useful PCA parameters.
 
@@ -21,8 +21,6 @@ class PCPlot:
             Spectra of shape [n_spectra, n_points].
         label : list of str
             Labels of shape [n_sepctra]
-        wn : ndarray 
-            Wavenumber of shape [n_points].
         ncomp : int
             Number of Principal Components.
 
@@ -34,7 +32,6 @@ class PCPlot:
         
         self.spec = spec
         self.label = label
-        self.wn = wn
         self.ncomp = ncomp
         
         self.pca = PCA(n_components=ncomp)
@@ -207,14 +204,16 @@ class PCPlot:
         plt.legend()
         
         
-    def loading(self, pc):
+    def loading(self, wn, pc):
         '''
         Loadings plot.
 
         Parameters
         ----------
+        wn : ndarray 
+            Wavenumber of shape [n_points].        
         pc : int
-            Which PC will be selected for the loading plot.
+            Which PC will be selected to the loading plot.
 
         Returns
         -------
@@ -230,7 +229,7 @@ class PCPlot:
         plt.title(f'PC-{pc} Loadings')
         plt.xlim(1800, 900)
         plt.plot(
-            self.wn,
+            wn,
             self.loadings[:,pc-1]
             )
         plt.grid(False) 
