@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from scipy import stats
 
 
 class PCPlot:
@@ -111,9 +112,10 @@ class PCPlot:
         return legends, colors
     
     
-    def score(self, pcx, pcy):
+    def score(self, pcx, pcy, conf=False):
         '''
-        Scores plot (PCx vs PCy)
+        Scores plot (PCx vs PCy). 
+        If conf, plot Hotelling T2 confidence ellipse.
 
         Parameters
         ----------
@@ -121,13 +123,16 @@ class PCPlot:
             Which PC will be selected to the x axis.
         pcy : int
             Which PC will be selected to the y axis.
+        conf : float, optional
+            Ellipse confidence interval (from 0 to 1). The default is False.
 
         Returns
         -------
         None.
 
         '''
-
+        
+        # Scores Plot
         legends, colors = self.labeling()
         fig, ax = plt.subplots()
         plt.axhline(y=0, color='k', linestyle='--', linewidth=1)
@@ -144,9 +149,32 @@ class PCPlot:
         plt.ylabel(f"PC-{pcy} ({np.round(self.variance_ratio[pcy-1]*100,2)}%)")
         plt.title('PC Scores')
         plt.legend(handles=legends)
-        plt.rcParams.update({'font.size': 18})
-        plt.show()
-
+        
+        # Hotelling T2 confidence ellipse
+        if conf:            
+            theta = np.concatenate(
+                (
+                    np.linspace(-np.pi, np.pi, 50),
+                    np.linspace(np.pi, -np.pi, 50)
+                    )
+                )
+            circle = np.array((np.cos(theta), np.sin(theta)))
+            sigma = np.cov(
+                np.array(
+                    (
+                        self.scores[:, pcx-1],
+                        self.scores[:, pcy-1]
+                        )
+                    )
+                )
+            dimension = np.sqrt(stats.chi2.ppf(conf, df=2))
+            
+            ellipse = circle.T.dot(np.linalg.cholesky(sigma)*dimension)
+            xmax, ymax = np.max(ellipse[:, 0]), np.max(ellipse[:, 1])
+            t = np.linspace(0, 2*np.pi, 100)
+            
+            plt.plot(xmax*np.cos(t), ymax*np.sin(t), color='red')
+            
 
     def expvar(self):
         '''
