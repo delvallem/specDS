@@ -150,23 +150,19 @@ class PCPlot:
         # Hotelling T2 confidence ellipse
         if conf:            
             theta = np.concatenate(
-                (
-                    np.linspace(-np.pi, np.pi, 50),
-                    np.linspace(np.pi, -np.pi, 50)
-                    )
+                (np.linspace(-np.pi, np.pi, 50),
+                 np.linspace(np.pi, -np.pi, 50))
                 )
             circle = np.array((np.cos(theta), np.sin(theta)))
             sigma = np.cov(
                 np.array(
-                    (
-                        self.scores[:, pcx-1],
-                        self.scores[:, pcy-1]
-                        )
+                    (self.scores[:, pcx-1],
+                     self.scores[:, pcy-1])
                     )
                 )
-            dimension = np.sqrt(stats.chi2.ppf(conf, df=2))
+            pdf = np.sqrt(stats.chi2.ppf(conf, df=2))
             
-            ellipse = circle.T.dot(np.linalg.cholesky(sigma)*dimension)
+            ellipse = circle.T.dot(np.linalg.cholesky(sigma)*pdf)
             xmax, ymax = np.max(ellipse[:, 0]), np.max(ellipse[:, 1])
             t = np.linspace(0, 2*np.pi, 100)
             
@@ -227,7 +223,7 @@ class PCPlot:
         plt.xlabel('Wavenumber ($\mathrm{cm^{-1}}$)')
         plt.ylabel('Loading (a.u.)')
         plt.title(f'PC-{pc} Loadings')
-        plt.xlim(1800, 900)
+        plt.xlim(np.ceil(wn.max()), np.floor(wn.min()))
         plt.plot(
             wn,
             self.loadings[:,pc-1]
@@ -235,3 +231,85 @@ class PCPlot:
         plt.grid(False) 
         
     
+    def hotelling(self, conf, reduced=False):
+        '''
+        Hotelling's T-squared vs Q residuals Plot. 
+        Outlier detection.
+
+        Parameters
+        ----------
+        conf : float
+            Confidence interval (from 0 to 1).
+        reduced : boolean, optional
+            The default is False: regular plot with dashed confidence lines.
+            If True: normalize axes by the confidence and remove dashed lines.
+
+        Returns
+        -------
+        outliers : boolean
+            Array identifying outliers.
+
+        '''
+        
+        # Calculate Q resisuals and T-squared
+        error = self.spec - np.dot(self.scores, self.loadings.T)
+        qres = np.sum(error**2, axis=1)
+        tsqr = np.sum((self.scores/np.std(self.scores, axis=0))**2, axis=1)
+            
+        # T-squared confidence interval
+        pdf = stats.f.ppf(
+            q=conf,
+            dfn=self.ncomp,
+            dfd=self.spec.shape[0]
+            )        
+        tsqr_conf = (pdf
+                   * self.ncomp
+                   * (self.spec.shape[0]-1)
+                   / (self.spec.shape[0]-self.ncomp))
+           
+        # Q residuals confidence interval
+        qres_conf = np.quantile(np.abs(qres), conf)
+
+        # Outliers (above T-squared AND Q residuals)
+        outliers = ((tsqr > tsqr_conf) & ((np.abs(qres) > qres_conf)))
+            
+        # Plot Hotelling T-squared vs Q resisuals
+        legends, colors = self.labeling()
+        
+        if reduced:
+            fig, ax = plt.subplots()
+            plt.scatter(
+                tsqr/tsqr_conf,
+                qres/qres_conf,
+                c=colors, 
+                s=50, 
+                edgecolors='w', 
+                alpha=0.5
+                )
+            plt.xlabel("Hotelling's T$\mathrm{^{2}}$ Reduced" \
+                       f" ({np.round(self.variance_total*100,2)}%)")
+            plt.ylabel(f"Q Residuals Reduced" \
+                       f" ({np.round(100-self.variance_total*100,2)}%)")
+            plt.xlim(0)
+            plt.ylim(0)
+            plt.legend(handles=legends)
+        
+        else:
+            fig, ax = plt.subplots()
+            plt.scatter(
+                tsqr,
+                qres,
+                c=colors, 
+                s=50, 
+                edgecolors='w', 
+                alpha=0.5
+                )
+            plt.axhline(y=qres_conf, color='red', linestyle='--', linewidth=1)
+            plt.axvline(x=tsqr_conf, color='red', linestyle='--', linewidth=1)
+            plt.xlabel("Hotelling's T$\mathrm{^{2}}$" \
+                       f" ({np.round(self.variance_total*100,2)}%)")
+            plt.ylabel(f"Q Residuals" \
+                       f" ({np.round(100-self.variance_total*100,2)}%)")
+            plt.legend(handles=legends)
+        
+        return outliers
