@@ -270,7 +270,7 @@ class PCPlot:
         # Q residuals confidence interval
         qres_conf = np.quantile(np.abs(qres), conf)
 
-        # Outliers (above T-squared AND Q residuals)
+        # Main outliers (above T-squared AND Q residuals)
         outliers = ((tsqr > tsqr_conf) & ((np.abs(qres) > qres_conf)))
             
         # Plot Hotelling T-squared vs Q resisuals
@@ -311,5 +311,9 @@ class PCPlot:
             plt.ylabel(f"Q Residuals" \
                        f" ({np.round(100-self.variance_total*100,2)}%)")
             plt.legend(handles=legends)
+        
+        print(f'{sum(outliers)} main outliers found' \
+              f' ({np.round((sum(outliers)/self.spec.shape[0])*100, 2)}%' \
+                  ' of the total spectra).')
         
         return outliers
