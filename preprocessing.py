@@ -258,7 +258,7 @@ def snv(spec):
     return spec   
  
 
-def emsc(spec, degree = 2, norm = True):
+def emsc(spec, degree=2, norm=True):
     '''
     Extended multiplicative signal correction (EMSC). 
     As described in Afseth and Kohler, 2012 (10.1016/j.chemolab.2012.03.004).
@@ -291,7 +291,7 @@ def emsc(spec, degree = 2, norm = True):
     
     # Least Squares estimation
     model = np.hstack((np.mean(spec, axis=0).reshape(-1,1), d))
-    params = np.linalg.lstsq(model,spec.T,rcond=None)[0]
+    params = np.linalg.lstsq(model, spec.T, rcond=None)[0]
     
     # Baseline correction (a, d1, d2, ..., dn)
     spec_corr = spec - model[:,1:].dot(params[1:,:]).T
@@ -323,6 +323,7 @@ def meancenter(spec, orientation):
         Mean centered spectra of same shape.
 
     '''
+    
     if orientation == 'row':
         spec = spec - np.mean(spec, axis=1)[:,None]
         print('Mean centered (rows).')
@@ -335,3 +336,95 @@ def meancenter(spec, orientation):
         print('Invalid orientation! \nSelect "row" or "column" orientation.')
 
     return spec
+
+
+def pcanoise(spec, ncomp=False, expvar=False):
+    '''
+    PCA Noise Reduction.
+    
+    Accepts a fixed PC number OR a fixed explained variance and PC will be \
+        sellected according to it. Only one has to be informed.
+    
+    Examples:
+    
+    - pcanoise(spec, ncomp=10):
+        - Apply a PCA model with 10 PCs.
+        
+    - pcanoise(spec, expvar=0.9)
+        - Apply a PCA model with the number of PCs where the explained \
+            variance is up to 90%.
+        
+
+    Parameters
+    ----------
+    spec : ndarray
+        Spectra of shape [n_spectra, n_points].
+    ncomp : int, optional
+        Number of Principal Components. The default is False.
+    expvar : float, optional
+        Explained variance to reach with the PCs. The default is False.
+
+    Returns
+    -------
+    spec_denoise : ndarray
+        Spectra after PCA Noise Reduction.
+
+    '''
+    
+    from sklearn.decomposition import PCA
+    
+    if ncomp and not expvar:
+        
+        # Fit PCA Model and calculate the parameters
+        pca = PCA(n_components=ncomp)
+        scores = pca.fit_transform(spec)
+        variance_cumulative = np.cumsum(pca.explained_variance_ratio_)
+        loadings = (pca.components_.T
+                    * np.sqrt(pca.explained_variance_)) 
+        
+        # Spectra noise reduction
+        spec_denoise = np.mean(spec, axis=0) + np.dot(scores, loadings.T)
+        
+        print(f'PCA Noise Reduction applied: \n' \
+              f'- Selected PCs: {ncomp}. \n' \
+              f'- Explained Variance: ' \
+                  f'{np.round(variance_cumulative[-1]*100, 2)}%.')   
+
+        return spec_denoise
+            
+    elif expvar and not ncomp:
+        
+        # Fit PCA Model
+        pca = PCA()
+        scores = pca.fit(spec)
+        
+        # Check the number of PCs where the explained variance is up to expvar
+        variance_cumulative = np.cumsum(pca.explained_variance_ratio_)
+        pcselect = (variance_cumulative <= expvar)
+        
+        # Calculate the parameters (only for selected PCs)
+        scores = pca.transform(spec)[:,pcselect]
+        loadings = (pca.components_.T[:,pcselect]
+                    * np.sqrt(pca.explained_variance_)[pcselect])
+        
+        # Spectra noise reduction     
+        spec_denoise = np.mean(spec, axis=0) + np.dot(scores, loadings.T)        
+        
+        print(f'PCA Noise Reduction applied: \n' \
+              f'- Selected PCs: {sum(pcselect)}. \n' \
+              f'- Explained Variance: ' \
+                  f'{np.round(variance_cumulative[pcselect][-1]*100, 2)}%.')
+        
+        return spec_denoise
+    
+    elif expvar and ncomp:
+        print('Invalid input! Two parameters informed.\n' \
+              'Inform only one: number of PCs (ncomp) ' \
+                      'OR explained variance (expvar).')   
+            
+    elif not expvar and not ncomp:
+        print('Invalid input! No parameter informed.\n' \
+              'Inform only one: number of PCs (ncomp) ' \
+                      'OR explained variance (expvar).')            
+    
+    
