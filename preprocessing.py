@@ -358,7 +358,9 @@ def offset(spec):
     return spec
 
 
-def quality(spec, wn, signal=[1620,1690], noise=[1800,1900], threshold=False):
+def quality(spec, wn, 
+            signal=[1620,1690], noise=[1800,1900], 
+            threshold=False, label=False):
     '''
     Quality test based on the Signal-to-Noise Ratio (SNR).
     Optional: remove bad quality spectra based on input threshold.
@@ -377,19 +379,22 @@ def quality(spec, wn, signal=[1620,1690], noise=[1800,1900], threshold=False):
             The default is [1800,1900] for the biological dead region (usually).
     threshold : float, optional
         SNRs lower than the threshold are bad quality. The default is False.
-
+    label : list, optional
+        List of labels. The default is False. Pass only if threshold.
+        
     Returns
     -------
-    quality_bad : boolean, optional
-        Array identifying outliers.
-          
-    spec_clean : ndarray, optional
+    quality_bad : boolean, optional (only if threshold)
+        Array identifying outliers.         
+    spec_clean : ndarray, optional (only if threshold)
         Cleaned spectra of shape [n_spectra, n_points] (bad quality removed).
-
+    label_clean : ndarray, optional (only if threshold)
+        Cleaned labels of shape [n_spectra] (bad quality removed).
+            
     '''
     
     # Offset
-    spec_off = spec - np.min(spec, axis=1)[:,None]
+    spec_off = offset(spec)
     
     # Signal-to-Noise Ratio
     signal_mask = ((wn >= signal[0]) & (wn <= signal[1]))
@@ -401,9 +406,12 @@ def quality(spec, wn, signal=[1620,1690], noise=[1800,1900], threshold=False):
     # If bad quality thresholding
     if threshold:
         
+        from itertools import compress
+        
         # Thresholding
         quality_bad = snr < threshold        
         spec_clean = spec[np.invert(quality_bad),:]
+        label_clean = list(compress(label, np.invert(quality_bad)))
 
         print(f'{sum(quality_bad)} bad quality spectra found' \
               f' ({np.round((sum(quality_bad)/spec.shape[0])*100, 2)}%' \
@@ -417,7 +425,7 @@ def quality(spec, wn, signal=[1620,1690], noise=[1800,1900], threshold=False):
         plt.axvline(x=threshold, color='red', linewidth=1)
         plt.xlim(0)
         
-        return quality_bad, spec_clean
+        return quality_bad, spec_clean, label_clean
     
     else:
         

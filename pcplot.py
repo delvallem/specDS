@@ -246,15 +246,17 @@ class PCPlot:
             If True: normalize axes by the confidence and remove dashed lines.
         clean : boolean, optional
             The default is False: do not return outliers or modified spectra. 
-            If True: return outliers array and cleaned spectra.
+            If True: return outliers array, and cleaned spectra and labels.
 
         Returns
         -------
-        outliers : boolean, optional
+        outliers : boolean, optional (only if clean)
             Array identifying outliers.
-        spec_clean : ndarray, optional
+        spec_clean : ndarray, optional (only if clean)
             Cleaned spectra of shape [n_spectra, n_points] (outliers removed).
-
+        label_clean : ndarray, optional (only if clean)
+            Cleaned labels of shape [n_spectra] (outliers removed).
+            
         '''
         
         # Calculate Q resisuals and T-squared
@@ -323,5 +325,9 @@ class PCPlot:
                   ' of the total spectra).')
             
         if clean:
+            from itertools import compress
+            
             spec_clean = self.spec[np.invert(outliers),:]
-            return outliers, spec_clean
+            label_clean = list(compress(self.label, np.invert(outliers)))
+            
+            return outliers, spec_clean, label_clean
