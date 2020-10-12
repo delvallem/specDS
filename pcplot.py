@@ -231,23 +231,29 @@ class PCPlot:
         plt.grid(False) 
         
     
-    def hotelling(self, conf, reduced=False):
+    def hotelling(self, conf, reduced=False, clean=False):
         '''
         Hotelling's T-squared vs Q residuals Plot. 
-        Outlier detection.
+        
+        Outlier detection and removal.
 
         Parameters
         ----------
         conf : float
             Confidence interval (from 0 to 1).
         reduced : boolean, optional
-            The default is False: regular plot with dashed confidence lines.
+            The default is False: regular plot with dashed confidence lines. 
             If True: normalize axes by the confidence and remove dashed lines.
+        clean : boolean, optional
+            The default is False: do not return outliers or modified spectra. 
+            If True: return outliers array and cleaned spectra.
 
         Returns
         -------
-        outliers : boolean
+        outliers : boolean, optional
             Array identifying outliers.
+        spec_clean : ndarray, optional
+            Cleaned spectra of shape [n_spectra, n_points] (outliers removed).
 
         '''
         
@@ -270,11 +276,11 @@ class PCPlot:
         # Q residuals confidence interval
         qres_conf = np.quantile(np.abs(qres), conf)
 
-        # Main outliers (above T-squared AND Q residuals)
-        outliers = ((tsqr > tsqr_conf) & ((np.abs(qres) > qres_conf)))
+        # Outliers (above T-squared OR Q residuals)
+        outliers = ((tsqr > tsqr_conf) | ((np.abs(qres) > qres_conf)))
             
         # Plot Hotelling T-squared vs Q resisuals
-        legends, colors = self.labeling()
+        legends, colors = self.labeling()           
         
         if reduced:
             fig, ax = plt.subplots()
@@ -312,8 +318,10 @@ class PCPlot:
                        f" ({np.round(100-self.variance_total*100,2)}%)")
             plt.legend(handles=legends)
         
-        print(f'{sum(outliers)} main outliers found' \
+        print(f'{sum(outliers)} outliers found' \
               f' ({np.round((sum(outliers)/self.spec.shape[0])*100, 2)}%' \
                   ' of the total spectra).')
-        
-        return outliers
+            
+        if clean:
+            spec_clean = self.spec[np.invert(outliers),:]
+            return outliers, spec_clean
