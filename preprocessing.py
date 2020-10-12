@@ -307,7 +307,7 @@ def emsc(spec, degree=2, norm=True):
 
 def meancenter(spec, orientation):
     '''
-    Mean center rows or columns
+    Mean center rows or columns.
 
     Parameters
     ----------
@@ -335,6 +335,26 @@ def meancenter(spec, orientation):
     else:
         print('Invalid orientation! \nSelect "row" or "column" orientation.')
 
+    return spec
+
+
+def offset(spec):
+    '''
+    Remove spectra offset.
+
+    Parameters
+    ----------
+    spec : ndarray
+        Spectra of shape [n_spectra, n_points].
+
+    Returns
+    -------
+    spec : ndarray
+        Spectra without offset.
+
+    '''
+    spec = spec - np.min(spec, axis=1)[:,None]
+    
     return spec
 
 
