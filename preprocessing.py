@@ -3,7 +3,7 @@ Data pre-processing
 '''
 
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 def concat2D(data):
     '''
@@ -356,6 +356,77 @@ def offset(spec):
     spec = spec - np.min(spec, axis=1)[:,None]
     
     return spec
+
+
+def quality(spec, wn, signal=[1620,1690], noise=[1800,1900], threshold=False):
+    '''
+    Quality test based on the Signal-to-Noise Ratio (SNR).
+    Optional: remove bad quality spectra based on input threshold.
+
+    Parameters
+    ----------
+    spec : ndarray
+        Spectra of shape [n_spectra, n_points].
+    wn : ndarray 
+        Wavenumber of shape [n_points].
+    signal : list of int, optional
+        Initial and end points of the signal band. \
+            The default is [1620,1690] for the Amide I band.
+    noise : list of int, optional
+        Initial and end points of the noise band. \
+            The default is [1800,1900] for the biological dead region (usually).
+    threshold : float, optional
+        SNRs lower than the threshold are bad quality. The default is False.
+
+    Returns
+    -------
+    quality_bad : boolean, optional
+        Array identifying outliers.
+          
+    spec_clean : ndarray, optional
+        Cleaned spectra of shape [n_spectra, n_points] (bad quality removed).
+
+    '''
+    
+    # Offset
+    spec_off = spec - np.min(spec, axis=1)[:,None]
+    
+    # Signal-to-Noise Ratio
+    signal_mask = ((wn >= signal[0]) & (wn <= signal[1]))
+    signal_area = np.trapz(spec_off[:,signal_mask])     
+    noise_mask = ((wn >= noise[0]) & (wn <= noise[1]))
+    noise_area = np.trapz(spec_off[:,noise_mask])     
+    snr = signal_area/noise_area
+    
+    # If bad quality thresholding
+    if threshold:
+        
+        # Thresholding
+        quality_bad = snr < threshold        
+        spec_clean = spec[np.invert(quality_bad),:]
+
+        print(f'{sum(quality_bad)} bad quality spectra found' \
+              f' ({np.round((sum(quality_bad)/spec.shape[0])*100, 2)}%' \
+                  ' of the total spectra).')
+            
+        # Plot histogram with threshold line
+        fig, ax = plt.subplots()
+        plt.hist(snr, bins=500)
+        plt.xlabel('SNR')
+        plt.ylabel('Frequency')
+        plt.axvline(x=threshold, color='red', linewidth=1)
+        plt.xlim(0)
+        
+        return quality_bad, spec_clean
+    
+    else:
+        
+        # Plot histogram
+        fig, ax = plt.subplots()
+        plt.hist(snr, bins=500)
+        plt.xlabel('SNR')
+        plt.ylabel('Frequency')
+        plt.xlim(0)
 
 
 def pcanoise(spec, ncomp=False, expvar=False):
