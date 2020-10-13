@@ -11,7 +11,7 @@ from scipy import stats
 
 class PCPlot:
 
-    def __init__(self, spec, label, ncomp):
+    def __init__(self, spec, ncomp, label=False):
         '''
         Calculate useful PCA parameters.
 
@@ -19,8 +19,8 @@ class PCPlot:
         ----------
         spec : ndarray
             Spectra of shape [n_spectra, n_points].
-        label : list of str
-            Labels of shape [n_sepctra]
+        label : list of str, optional
+            Labels of shape [n_sepctra]. The default is False.
         ncomp : int
             Number of Principal Components.
 
@@ -31,8 +31,8 @@ class PCPlot:
         '''
         
         self.spec = spec
-        self.label = label
         self.ncomp = ncomp
+        self.label = label
         
         self.pca = PCA(n_components=ncomp)
         self.scores = self.pca.fit_transform(spec)
@@ -130,22 +130,33 @@ class PCPlot:
         '''
         
         # Scores Plot
-        legends, colors = self.labeling()
+        if self.label:
+            legends, colors = self.labeling()
         fig, ax = plt.subplots()
         plt.axhline(y=0, color='k', linestyle='--', linewidth=1)
         plt.axvline(x=0, color='k', linestyle='--', linewidth=1)
-        plt.scatter(
-            self.scores[:,pcx-1],
-            self.scores[:,pcy-1],
-            c=colors,
-            s=50,
-            edgecolors='w',
-            alpha=0.5
-            )        
+        if self.label:
+            plt.scatter(
+                self.scores[:,pcx-1],
+                self.scores[:,pcy-1],
+                c=colors,
+                s=50,
+                edgecolors='w',
+                alpha=0.5
+                )  
+            plt.legend(handles=legends)
+        else:
+            plt.scatter(
+                self.scores[:,pcx-1],
+                self.scores[:,pcy-1],
+
+                s=50,
+                edgecolors='w',
+                alpha=0.5
+                )              
         plt.xlabel(f"PC-{pcx} ({np.round(self.variance_ratio[pcx-1]*100,2)}%)")
         plt.ylabel(f"PC-{pcy} ({np.round(self.variance_ratio[pcy-1]*100,2)}%)")
         plt.title('PC Scores')
-        plt.legend(handles=legends)
         
         # Hotelling T2 confidence ellipse
         if conf:            
@@ -219,7 +230,6 @@ class PCPlot:
         
         # Loadings plot
         fig, ax = plt.subplots()
-        plt.grid()
         plt.xlabel('Wavenumber ($\mathrm{cm^{-1}}$)')
         plt.ylabel('Loading (a.u.)')
         plt.title(f'PC-{pc} Loadings')
@@ -231,7 +241,7 @@ class PCPlot:
         plt.grid(False) 
         
     
-    def hotelling(self, conf, reduced=False, clean=False):
+    def hotelling(self, conf, reduced=False, clean=False, show=True):
         '''
         Hotelling's T-squared vs Q residuals Plot. 
         
@@ -247,7 +257,10 @@ class PCPlot:
         clean : boolean, optional
             The default is False: do not return outliers or modified spectra. 
             If True: return outliers array, and cleaned spectra and labels.
-
+        show : boolean, optional
+            The default is True: show the T squared vs Q residuals plot. 
+            If False: do not show the plot.
+            
         Returns
         -------
         outliers : boolean, optional (only if clean)
@@ -282,52 +295,75 @@ class PCPlot:
         outliers = ((tsqr > tsqr_conf) | ((np.abs(qres) > qres_conf)))
             
         # Plot Hotelling T-squared vs Q resisuals
-        legends, colors = self.labeling()           
-        
-        if reduced:
-            fig, ax = plt.subplots()
-            plt.scatter(
-                tsqr/tsqr_conf,
-                qres/qres_conf,
-                c=colors, 
-                s=50, 
-                edgecolors='w', 
-                alpha=0.5
-                )
-            plt.xlabel("Hotelling's T$\mathrm{^{2}}$ Reduced" \
-                       f" ({np.round(self.variance_total*100,2)}%)")
-            plt.ylabel(f"Q Residuals Reduced" \
-                       f" ({np.round(100-self.variance_total*100,2)}%)")
-            plt.xlim(0)
-            plt.ylim(0)
-            plt.legend(handles=legends)
-        
-        else:
-            fig, ax = plt.subplots()
-            plt.scatter(
-                tsqr,
-                qres,
-                c=colors, 
-                s=50, 
-                edgecolors='w', 
-                alpha=0.5
-                )
-            plt.axhline(y=qres_conf, color='red', linestyle='--', linewidth=1)
-            plt.axvline(x=tsqr_conf, color='red', linestyle='--', linewidth=1)
-            plt.xlabel("Hotelling's T$\mathrm{^{2}}$" \
-                       f" ({np.round(self.variance_total*100,2)}%)")
-            plt.ylabel(f"Q Residuals" \
-                       f" ({np.round(100-self.variance_total*100,2)}%)")
-            plt.legend(handles=legends)
-        
+        if show:
+            if self.label:
+                legends, colors = self.labeling()           
+            
+            if reduced:
+                fig, ax = plt.subplots()
+                if self.label:
+                    plt.scatter(
+                        tsqr/tsqr_conf,
+                        qres/qres_conf,
+                        c=colors, 
+                        s=50, 
+                        edgecolors='w', 
+                        alpha=0.5
+                        )
+                    plt.legend(handles=legends)
+                else:
+                    plt.scatter(
+                        tsqr/tsqr_conf,
+                        qres/qres_conf,
+                        s=50, 
+                        edgecolors='w', 
+                        alpha=0.5
+                        )                
+                plt.xlabel("Hotelling's T$\mathrm{^{2}}$ Reduced" \
+                           f" ({np.round(self.variance_total*100,2)}%)")
+                plt.ylabel(f"Q Residuals Reduced" \
+                           f" ({np.round(100-self.variance_total*100,2)}%)")
+                plt.xlim(0)
+                plt.ylim(0)
+            
+            else:
+                fig, ax = plt.subplots()
+                if self.label: 
+                    plt.scatter(
+                        tsqr,
+                        qres,
+                        c=colors, 
+                        s=50, 
+                        edgecolors='w', 
+                        alpha=0.5
+                        )
+                    plt.legend(handles=legends)
+                else:
+                    plt.scatter(
+                        tsqr,
+                        qres,
+                        s=50, 
+                        edgecolors='w', 
+                        alpha=0.5
+                        )                    
+                plt.axhline(y=qres_conf, color='red', linestyle='--', linewidth=1)
+                plt.axvline(x=tsqr_conf, color='red', linestyle='--', linewidth=1)
+                plt.xlabel("Hotelling's T$\mathrm{^{2}}$" \
+                           f" ({np.round(self.variance_total*100,2)}%)")
+                plt.ylabel(f"Q Residuals" \
+                           f" ({np.round(100-self.variance_total*100,2)}%)")
+     
         print(f'{sum(outliers)} outliers found' \
               f' ({np.round((sum(outliers)/self.spec.shape[0])*100, 2)}%' \
                   ' of the total spectra).')
-            
+        
+        # Clean spec and label outliers    
         if clean:
             from itertools import compress
             
-            spec_clean = self.spec[np.invert(outliers),:]
-            label_clean = list(compress(self.label, np.invert(outliers)))
-            
-            return outliers, spec_clean, label_clean
+            spec_clean = self.spec[~outliers,:]
+            if self.label:
+                label_clean = list(compress(self.label, ~outliers))
+                return outliers, spec_clean, label_clean
+            else:
+                return outliers, spec_clean
