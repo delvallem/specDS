@@ -180,6 +180,39 @@ def cut_inner(wn, spec, init, final):
     return wn, spec
 
 
+def sg(spec, window, deriv=0):
+    '''
+    Savitzky–Golay filtering.
+
+    Parameters
+    ----------
+    spec : ndarray
+        Spectra of shape [n_spectra, n_points].
+    window : int
+        Lenght of the filter window.
+    deriv : int, optional
+        Derivative order. The default is 0 (no differentiation).
+
+    Returns
+    -------
+    spec : ndarray
+        Filtered spectra of same shape.
+
+
+    '''
+    
+    from scipy.signal import savgol_filter
+    
+    savgol_filter(spec, window_length=window, polyorder=2, deriv=deriv,axis=1)
+    
+    print('Savitzky–Golay filter applied. \n' \
+          f'- Window lenght = {window} \n' \
+          f'- Derivative order = {deriv}'
+          )
+
+    return spec
+
+
 def vector(spec):
     '''
     Vector normalization
