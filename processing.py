@@ -69,3 +69,26 @@ def band_area_multiple(wn, spec, points):
     
     return area
 
+def outlier_restore(cleaned, outliers):
+    '''
+    Restore removed outliers as zero. 
+    Useful for image reconstruction.
+
+    Parameters
+    ----------
+    cleaned : ndarray
+        Array with cleaned values to be restored.
+    outliers : boolean
+        Array identifying outliers.
+
+    Returns
+    -------
+    restored : ndarry
+        Array with cleaned values and outliers values as zero.
+
+    '''
+    
+    restored = np.zeros((outliers.shape[0], cleaned.shape[1]))
+    restored[~outliers,:] += cleaned
+    
+    return restored
