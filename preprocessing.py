@@ -303,7 +303,8 @@ def emsc(
         degree=2,
         norm=True,
         paraffin=np.array(False),
-        wn=np.array(False)
+        wn=np.array(False),
+        expvar = 0.99
         ):
     '''
     Extended multiplicative signal correction (EMSC). 
@@ -331,7 +332,10 @@ def emsc(
     wn : ndarray, optional 
         If paraffin spectra is informed, a wn of shape [n_points] has to be \
             informed as well.
-        
+    expvar : float
+        Explained variance. If paraffin spectra is informed, number of PCs is \
+            selected to reach desired expvar. The deafult is 99%.
+            
     Returns
     -------
     spec_corr : ndarray
@@ -346,18 +350,23 @@ def emsc(
     # If paraffin spectra, add paraffin to the model
     if paraffin.any():
         
-        # Paraffin PCA
-        pca = PCA(n_components=10)
-        pca.fit_transform(paraffin)
-        vectors = pca.components_.T
+        # Fit Paraffin PCA
+        pca = PCA()
+        pca.fit(paraffin)
+        
+        # Get eigenvectors of PCs where the explained variance is up to expvar
+        variance_cumulative = np.cumsum(pca.explained_variance_ratio_)
+        pcselect = (variance_cumulative <= expvar)
+        
+        vectors = pca.components_.T[:,pcselect]
         
         # Paraffin region mask
         mask = ((wn >= 1350) & (wn <= 1500))
 
         par_mean = np.mean(paraffin, axis=0).reshape(-1,1)
-        par_mean[~mask]=0
+        par_mean[~mask] = 0
         
-        vectors[~mask,:]=0
+        vectors[~mask,:] = 0
         
         # Model
         model = np.hstack((
