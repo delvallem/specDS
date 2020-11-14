@@ -4,6 +4,7 @@ Data pre-processing
 
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 
 def concat2D(data):
     '''
@@ -134,7 +135,7 @@ def cut_outer(wn, spec, init, final):
     wn = wn[mask]
     spec = spec[:,mask]
     
-    print(f'Selected from {init} cm-1 to {final} cm-1.')
+    print(f'Selected from {init} to {final} cm-1.')
     
     return wn, spec
 
@@ -175,7 +176,7 @@ def cut_inner(wn, spec, init, final):
     wn = wn[mask]
     spec = spec[:,mask]
     
-    print(f'Removed from {init} cm-1 to {final} cm-1.')
+    print(f'Removed from {init} to {final} cm-1.')
     
     return wn, spec
 
@@ -203,7 +204,13 @@ def sg(spec, window, deriv=0):
     
     from scipy.signal import savgol_filter
     
-    savgol_filter(spec, window_length=window, polyorder=2, deriv=deriv,axis=1)
+    spec = savgol_filter(
+        spec,
+        window_length=window,
+        polyorder=2,
+        deriv=deriv,
+        axis=1
+        )
     
     print('Savitzky–Golay filter applied. \n' \
           f'- Window lenght = {window} \n' \
@@ -291,7 +298,13 @@ def snv(spec):
     return spec   
  
 
-def emsc(spec, degree=2, norm=True):
+def emsc(
+        spec,
+        degree=2,
+        norm=True,
+        paraffin=np.array(False),
+        wn=np.array(False)
+        ):
     '''
     Extended multiplicative signal correction (EMSC). 
     As described in Afseth and Kohler, 2012 (10.1016/j.chemolab.2012.03.004).
@@ -310,7 +323,15 @@ def emsc(spec, degree=2, norm=True):
         Degree of the polynomial model. The default is 2.
     norm : bool, optional
         Normalize the data. The default is True.
-
+    paraffin : ndarray, optional 
+        Paraffin spectra. The default is False.
+        If paraffin spectra of same shape as spec is informed, a PCA model \
+            of paraffin is added to the EMSC model.
+        A wn vector must be informed in this case to mask paraffin region.
+    wn : ndarray, optional 
+        If paraffin spectra is informed, a wn of shape [n_points] has to be \
+            informed as well.
+        
     Returns
     -------
     spec_corr : ndarray
@@ -322,8 +343,39 @@ def emsc(spec, degree=2, norm=True):
     d = np.linspace(-1, 1, np.shape(spec)[1]).reshape(-1,1)
     d = np.repeat(d,degree+1,axis=1)**np.arange(0,degree+1)
     
+    # If paraffin spectra, add paraffin to the model
+    if paraffin.any():
+        
+        # Paraffin PCA
+        pca = PCA(n_components=10)
+        pca.fit_transform(paraffin)
+        vectors = pca.components_.T
+        
+        # Paraffin region mask
+        mask = ((wn >= 1350) & (wn <= 1500))
+
+        par_mean = np.mean(paraffin, axis=0).reshape(-1,1)
+        par_mean[~mask]=0
+        
+        vectors[~mask,:]=0
+        
+        # Model
+        model = np.hstack((
+            np.mean(spec, axis=0).reshape(-1,1),
+            d,
+            par_mean,
+            vectors
+            ))
+    
+    else:
+        
+        # Model
+        model = np.hstack((
+            np.mean(spec, axis=0).reshape(-1,1),
+            d
+            ))
+    
     # Least Squares estimation
-    model = np.hstack((np.mean(spec, axis=0).reshape(-1,1), d))
     params = np.linalg.lstsq(model, spec.T, rcond=None)[0]
     
     # Baseline correction (a, d1, d2, ..., dn)
@@ -443,8 +495,8 @@ def quality(spec, wn,
         
         # Thresholding
         quality_bad = snr < threshold        
-        spec_clean = spec[np.invert(quality_bad),:]
-        label_clean = list(compress(label, np.invert(quality_bad)))
+        spec_clean = spec[~quality_bad,:]
+        label_clean = list(compress(label, ~quality_bad))
 
         print(f'{sum(quality_bad)} bad quality spectra found' \
               f' ({np.round((sum(quality_bad)/spec.shape[0])*100, 2)}%' \
@@ -502,8 +554,6 @@ def pcanoise(spec, ncomp=False, expvar=False):
         Spectra after PCA Noise Reduction.
 
     '''
-    
-    from sklearn.decomposition import PCA
     
     if ncomp and not expvar:
         
