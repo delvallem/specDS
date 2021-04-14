@@ -103,6 +103,9 @@ def openFPA(path, mode):
         dmd_path = glob.glob(path + "/*.dmd")
         dat_path = glob.glob(path + "/*.dat")
         
+        # Sort dmd
+        dmd_path.sort()
+        
         # Wavenumber array
         dmt_float = np.fromfile(dmt_path[0], dtype='float64')
         dmt_int = np.fromfile(dmt_path[0], dtype='int32')
